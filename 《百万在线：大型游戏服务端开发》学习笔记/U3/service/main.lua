@@ -11,3 +11,4 @@ skynet.start(function ()
     -- 退出自身
     skynet.exit()
 end)
+
