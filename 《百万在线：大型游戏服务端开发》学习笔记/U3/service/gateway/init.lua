@@ -4,6 +4,10 @@ gateway 服务：
     负责对客户端消息的转发，收到客户端消息的时候；
     判断是发送给login服务，还是发送给agent服务；
     同时接收其他服务传过来的消息。
+
+这里需要明确一个点：
+    服务 和 客户端 之间通信是通过协议的，比如在这里就是：login,xxx,xxx\r\n
+    而 服务 和 服务 之间的消息是通过 table 的，比如：{login, xxx , xxx}
 ]]--
 
 local skynet = require "skynet"
@@ -27,7 +31,7 @@ function conn()
 end
 
 -- 玩家类
-function player()
+function gateplayer()
     local m = {     -- 玩家id 关联 玩家代理agent，连接类conn
         playerid = nil;
         agent = nil;
@@ -64,22 +68,100 @@ local str_unpack = function (msgstr)
 end
 
 
---------------------    -----------------------
+-------------------- 3.6.6 发送消息接口 -----------------------
+
+-- 将消息从 login 转发给 客户端
+s.resp.send_by_fd = function (source, fd, msg)
+    if not conns[fd] then
+        return;
+    end
+    local buff = str_pack(msg[1],msg);  -- 封装成协议（编码）
+    skynet.error("send "..fd.." ["..msg[1].."] {"..table.concat( msg, ",").."}")
+    socket.write(fd,buff);
+end
+
+-- 将消息从 agent 转发给 客户端
+s.resp.send = function (source, playerid, msg)
+    local gplayer = players[playerid];
+    if gplayer == nil then
+        return;
+    end
+
+    local c = gplayer.conn;
+    if c == nil then
+        return;
+    end
+
+    s.resp.send_by_fd(nil, c.fd, msg);
+end
 
 
+-------------------- 3.6.7 确认登录接口 -----------------------
 
---------------------    -----------------------
+-- 完成登录流程之后，login 会通知 gateway，
+-- 将 客户端 和 agent 关联起来
+s.resp.sure_agent = function (source, fd, playerid, agent)
+    local conn = conns[fd];
+    if not conn then        -- 登陆过程中已经下线
+        skynet.call("agentmgr", "lua", "reqkick", playerid, "未完成登陆即下线")
+		return false
+    end
 
+    conn.playerid = playerid;
 
+    local gplayer = gateplayer();
+    gplayer.playerid = playerid;
+    gplayer.agent = agent;
+    gplayer.conn = conn;
+    players[playerid] = gplayer;
 
+    return true;
+end
 
+-------------------- 3.6.8 登出流程 -----------------------
 
---------------------  -----------------------
+--[[
+登出有两种方式:
+1. 客户端掉线：在协程中会调用 disconnect()
+2. 被顶替下线：走 s.resp.kick()
+]]--
 
+-- 处理断开连接
+local disconnect = function (fd)
+    local c = conns[fd];
+    if not c then
+        return;
+    end
+    
+    local playerid = c.playerid;
 
+    if(not playerid) then   -- 还未完成登录
+        return;
+    else                    -- 已经在游戏中
+        players[playerid] = nil;
+        local reason = "断线";
+        -- 向 agentmgr 发送下线请求，由 agentmgr 仲裁
+        skynet.call("agentmgr", "lua", "reqkick", playerid, reason);
+    end
+end
 
+-- 顶替下线
+s.resp.kick = function (source, playerid)
+    local gplayer = players[playerid];
+    if not gplayer then
+        return;
+    end
 
+    local c = gplayer.conn;
+    players[playerid] = nil;
 
+    if(not c) then
+        return;
+    end
+    conns[c.fd] = nil;
+    disconnect(c.fd);
+    socket.close(c.fd);
+end
 
 -------------------- 3.6.5 消息分发 -----------------------
 
@@ -152,7 +234,7 @@ local connect = function (fd, addr)
     
     local c = conn();   -- 创建新连接
     conns[fd] = c;      -- 初始化
-    c.fd = c;
+    c.fd = fd;
 
     -- 对于一个连接，创建一个协程去接收数据
     skynet.fork(recv_loop, fd); 
