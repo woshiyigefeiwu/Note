@@ -1,6 +1,21 @@
 --[[
 封装服务的使用方法；
 使得在写服务的时候更加方便
+
+这里其实很奇妙哦~
+
+首先是外面启动的服务会走到这里的start；
+然后会走到这里的init；
+然后注意这个init里面做了什么事情？
+它把"lua"类型的消息 dispatch 了;
+
+也就是说后面发的"lua"消息中，会走这里的dispatch；
+然后 dispatch 里面走了 local fun = M.resp[cmd]；
+也就是走了 resp 里面的函数（这些函数在各自的服务init里面定义了，所以不为空）
+所以也就是，服务之间发送消息的时候（例如："lua" "login"）
+其实就会走 xxx.resp[cmd] （例如 xxx 为 login1，cmd 为 "login"）
+
+相当于是封装了一下
 ]]--
 
 local skynet = require "skynet"
