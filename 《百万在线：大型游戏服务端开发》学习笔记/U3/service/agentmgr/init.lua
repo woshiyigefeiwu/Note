@@ -31,7 +31,7 @@ end
 s.resp.reqlogin = function (source, playerid, node, gate)
     local mplayer = players[playerid];
 
-    -- 登录过程进制顶替
+    -- 登录过程禁止顶替
     if (mplayer and mplayer.status == STATUS.LOGOUT) then
         skynet.error("reqlogin fail, at status LOGOUT " ..playerid);
 		return false;
@@ -56,7 +56,7 @@ s.resp.reqlogin = function (source, playerid, node, gate)
     end
 
     -- 上线
-    local player = mplayer();
+    local player = mgrplayer();
     player.playerid = playerid;
 	player.node = node
 	player.gate = gate
@@ -99,3 +99,4 @@ s.resp.reqkick = function(source, playerid, reason)
 end
 
 s.start(...)
+
