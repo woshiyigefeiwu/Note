@@ -1,4 +1,6 @@
 #include "Sunnet.h"
+#include <string>
+using namespace std;
 
 int test() {
     auto pingType = make_shared<string>("ping");
