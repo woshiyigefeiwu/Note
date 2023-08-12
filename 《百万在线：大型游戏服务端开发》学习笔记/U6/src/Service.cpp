@@ -2,6 +2,7 @@
 #include "Sunnet.h"
 #include <unistd.h>
 #include <iostream>
+#include <string.h>
 
 //构造函数
 Service::Service() {
@@ -75,9 +76,9 @@ void Service::OnInit() {
 // 收到客户端数据
 void Service::OnSocketData(int fd, const char* buff, int len) {
     cout << "OnSocketData" << fd << " buff: " << buff << endl;
-    // echo
-    char wirteBuff[4] = {'l','p','y','\n'};
-    write(fd, &wirteBuff, 4);
+    // // echo
+    // char wirteBuff[4] = {'l','p','y','\n'};
+    // write(fd, &wirteBuff, 4);
 
     /* 练习题新增行
     usleep(15000000); //15秒
@@ -93,21 +94,20 @@ void Service::OnSocketData(int fd, const char* buff, int len) {
     cout << "write3 r:" << r <<  " " << strerror(errno) <<  endl;
     */
 
-   /*发送大量数据实验
-   char* wirteBuff = new char[4200000];
-   wirteBuff[4200000-1] = 'e';
-   int r = write(fd, wirteBuff, 4200000); 
-   cout << "write r:" << r <<  " " << strerror(errno) <<  endl;
-   */
+//    // 发送大量数据实验
+//    char* wirteBuff = new char[4200000];
+//    wirteBuff[4200000-2] = 'e';
+//    wirteBuff[4200000-1] = '\n';
+//    int r = write(fd, wirteBuff, 4200000); 
+//    cout << "write r:" << r <<  " " << strerror(errno) <<  endl;
 
-    /*
     //用ConnWriter发送大量数据
     char* wirteBuff = new char[4200000];
-    wirteBuff[4200000-1] = 'e';
+    wirteBuff[4200000-2] = 'e';
+    wirteBuff[4200000-1] = '\n';
     auto w = writers[fd];
     w->EntireWrite(shared_ptr<char>(wirteBuff), 4200000);
     w->LingerClose();
-    */
 }
 
 // 套接字可写（那么直接去自定义的写缓冲区取出数据发送）
